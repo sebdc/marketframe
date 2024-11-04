@@ -1,14 +1,14 @@
 // - Load environment variables
-require('dotenv').config({path: '../.env'});
+const Credentials = require('../src/utils/Credentials');
 const WarframeMarket = require('../src/api/WarframeMarket');
 
 // - Destructure environment variables for cleaner code
-const { EMAIL: email, PASSWORD: password } = process.env;
+const { email, password } = Credentials.credentials;
 
 const testCases = [
 	{ email: email, password: password, description: 'Valid credentials' },
 	{ email: 'invalid@example.com', password: 'wrongpassword', description: 'Invalid credentials' },
-	{ email: process.env.EMAIL, password: 'wrongpassword', description: 'Wrong password' },
+    { email: email, password: 'wrongpassword', description: 'Wrong password' },
 ];
 
 // - Login test
@@ -18,15 +18,13 @@ describe('WarframeMarket Login Tests with Different Credentials', () => {
 		'Should handle login with $description',
 		async( {email, password, description} ) => {
 			try {
-				await api.signIn( email, password );
-
+				const response = await api.signIn( email, password );
+				console.log( response );
 				if( description === 'Valid credentials' ) {
-					expect(api.authToken).not.toBeNull();
+					expect(api.getAuthToken()).not.toBeNull();
 				} else {
-					expect(api.authToken).toBeUndefined();
+					expect(api.getAuthToken()).toBeUndefined();
 				}
-
-				console.log(`Test completed for case: ${description}`);
 			} catch( error ) {
 				console.error('An error occured during the login test:', error );
 				if( description === 'Valid credentials' ) {

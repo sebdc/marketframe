@@ -26,11 +26,6 @@ class Url {
         return `${this.API_BASE_URL}${this.MY_ORDERS}`;
     }
 
-    // General method to build URL for any other endpoint
-    static buildUrl(endpoint) {
-        return `${this.API_BASE_URL}${endpoint}`;
-    }
-
     /**
      *  Method to build the full URL by combining the base and the endpoint
      * 
