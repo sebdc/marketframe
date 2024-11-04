@@ -1,6 +1,5 @@
 const Url = require('../utils/Url');
 const User = require('../model/User');
-const WebSocket = require('ws');
 
 /**
  *  @class Auth
@@ -12,7 +11,6 @@ class Auth {
         this.authToken = null;
         this.currentUser = null;
         this.profileData = null; 
-        this.ws = null;
         this.platform = 'pc'; 
     }
 
@@ -74,8 +72,6 @@ class Auth {
                 // - console.log('Current User:', this.currentUser);
                 // - console.log('Response body:', responseBody);
 
-                await this.initializeWebSocket();
-
                 return responseBody;
             } else {
                 throw new Error(`Login failed. Status code: ${response.status}`);
@@ -87,111 +83,10 @@ class Auth {
     }
 
     logout() {
-        if (this.ws) {
-            this.ws.close();
-        }
-        this.ws = null;
         this.jwtToken = null;
         this.authToken = null;
         this.currentUser = null;
         this.profileData = null;
-    }
-
-    async initializeWebSocket() {
-        return new Promise((resolve, reject) => {
-            // Close existing connection if any
-            if (this.ws) {
-                this.ws.close();
-            }
-
-            // Extract JWT token from Authorization header
-            const jwt = this.authToken.replace('JWT ', '');
-            
-            // Use the correct WebSocket URL with platform parameter
-            const wsUrl = `wss://warframe.market/ws?platform=${this.platform}`;
-
-            // Set up WebSocket connection with proper headers
-            const wsOptions = {
-                headers: {
-                    Cookie: `JWT=${jwt}`,
-                    Origin: 'https://warframe.market',
-                    'User-Agent': 'Mozilla/5.0',
-                    'Accept-Language': 'en-US,en;q=0.9'
-                },
-                followRedirects: true
-            };
-
-            console.log('Connecting to WebSocket:', wsUrl);
-            console.log('Using JWT:', jwt);
-
-            this.ws = new WebSocket(wsUrl, wsOptions);
-
-            this.ws.on('open', () => {
-                console.log('WebSocket connection established');
-                resolve();
-            });
-
-            this.ws.on('message', (data) => {
-                try {
-                    const message = JSON.parse(data.toString());
-                    console.log('Received WebSocket message:', message);
-                } catch (error) {
-                    console.error('Error parsing WebSocket message:', error);
-                }
-            });
-
-            this.ws.on('error', (error) => {
-                console.error('WebSocket error:', error);
-                reject(error);
-            });
-
-            this.ws.on('close', (code, reason) => {
-                console.log('WebSocket connection closed:', { code, reason: reason.toString() });
-            });
-
-            // Set a timeout for the connection
-            setTimeout(() => {
-                if (this.ws.readyState !== WebSocket.OPEN) {
-                    reject(new Error('WebSocket connection timeout'));
-                }
-            }, 5000);
-        });
-    }
-
-
-    async setStatus(status) {
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            // Try to reconnect if connection is closed
-            try {
-                await this.initializeWebSocket();
-            } catch (error) {
-                throw new Error(`Failed to establish WebSocket connection: ${error.message}`);
-            }
-        }
-
-        if (!['online', 'ingame', 'offline'].includes(status)) {
-            throw new Error('Invalid status. Must be: online, ingame, or offline');
-        }
-
-        try {
-            // Match the Python implementation's message format
-            const message = {
-                "type": "set_status",
-                "payload": status
-            };
-
-            console.log('Sending WebSocket message:', message);
-            this.ws.send(JSON.stringify(message));
-
-            // Wait a moment and fetch profile to confirm update
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await this.fetchProfileData();
-            
-            return this.profileData.status;
-        } catch (error) {
-            console.error('Error updating status:', error);
-            throw error;
-        }
     }
 
     async fetchProfileData() {
